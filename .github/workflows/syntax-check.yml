@@ -1,0 +1,21 @@
+name: Syntax Check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  node-syntax:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Check JavaScript syntax
+        run: node --check payslip-tools.mjs
