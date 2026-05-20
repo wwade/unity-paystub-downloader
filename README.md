@@ -28,7 +28,7 @@ If the payslip portal is already loaded in Chrome, the script can usually discov
 node .\payslip-tools.mjs config
 ```
 
-That command prints the discovered portal origin, API origin, tenant, payroll id, pay-run id, and Session Storage token key. It does not print the access token value.
+That command prints the discovered portal origin, API origin, tenant, payroll id, pay-run id, Session Storage token key, and paydate count. It does not print the access token value.
 
 You can write the discovered values directly to local config:
 
@@ -46,11 +46,14 @@ Use `config.json` when you want to pin or override discovered values:
   "tenant": "your-tenant",
   "payrollId": "your-payroll-id",
   "payRunId": "your-pay-run-id",
-  "accessTokenKey": "your-session-storage-access-token-key"
+  "accessTokenKey": "your-session-storage-access-token-key",
+  "paydateCount": 26
 }
 ```
 
 The script reads `config.json` automatically if it exists. Shell environment variables still work and override `config.json`; both override auto-discovery. Do not commit `config.json`; it is ignored by Git.
+
+By default, the script asks the portal for the 26 most recent pay periods. Override that with `paydateCount` in `config.json`, `PAYSLIP_PAYDATE_COUNT`, or a CLI flag such as `--count 52`.
 
 ### Finding Config Values Manually
 
@@ -140,6 +143,13 @@ Show discovered configuration:
 
 ```powershell
 node .\payslip-tools.mjs config
+```
+
+Fetch more or fewer pay periods:
+
+```powershell
+node .\payslip-tools.mjs scan --count 52
+node .\payslip-tools.mjs download .\payslips-downloads --count 52
 ```
 
 Download all missing payslip PDFs into `payslips-downloads`:

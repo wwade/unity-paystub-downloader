@@ -13,6 +13,33 @@ const fileConfig = loadJsonConfig();
 function setting(envName, jsonName) {
   return process.env[envName] || fileConfig[jsonName];
 }
+function cliOption(...names) {
+  for (const name of names) {
+    const equalsArg = process.argv.find((arg) => arg.startsWith(`${name}=`));
+    if (equalsArg) return equalsArg.slice(name.length + 1);
+
+    const index = process.argv.indexOf(name);
+    if (index !== -1 && process.argv[index + 1] && !process.argv[index + 1].startsWith('--')) {
+      return process.argv[index + 1];
+    }
+  }
+
+  return undefined;
+}
+
+function positionalArg(position) {
+  const args = process.argv.slice(3);
+  const positionals = [];
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index];
+    if (arg.startsWith('--')) {
+      if (!arg.includes('=') && args[index + 1] && !args[index + 1].startsWith('--')) index++;
+      continue;
+    }
+    positionals.push(arg);
+  }
+  return positionals[position];
+}
 
 function logStatus(message) {
   console.error(message);
@@ -26,6 +53,7 @@ const config = {
   payrollId: setting('PAYSLIP_PAYROLL_ID', 'payrollId'),
   payRunId: setting('PAYSLIP_PAY_RUN_ID', 'payRunId'),
   accessTokenKey: setting('PAYSLIP_ACCESS_TOKEN_KEY', 'accessTokenKey'),
+  paydateCount: cliOption('--count', '--paydate-count') || setting('PAYSLIP_PAYDATE_COUNT', 'paydateCount') || '26',
 };
 
 const envNames = {
@@ -36,6 +64,7 @@ const envNames = {
   payrollId: 'PAYSLIP_PAYROLL_ID',
   payRunId: 'PAYSLIP_PAY_RUN_ID',
   accessTokenKey: 'PAYSLIP_ACCESS_TOKEN_KEY',
+  paydateCount: 'PAYSLIP_PAYDATE_COUNT',
 };
 
 function missingConfig(...keys) {
@@ -130,6 +159,14 @@ function isoDate(value) {
 
 function portalLocalDateTime(date = new Date()) {
   return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}+${date.getHours()}:${date.getMinutes()}`;
+}
+
+function paydateCount() {
+  const count = Number.parseInt(config.paydateCount, 10);
+  if (!Number.isSafeInteger(count) || count <= 0) {
+    throw new Error(`Invalid paydate count: ${config.paydateCount}`);
+  }
+  return count;
 }
 
 function safeFilePart(value) {
@@ -290,13 +327,14 @@ async function getManifest({ verbose = false } = {}) {
   }
 
   const apiBase = `${config.apiOrigin.replace(/\/$/, '')}/api/${state.company}`;
-  const paydatesUrl = `${apiBase}/payroll/${state.payrollId}/paydates/${state.payRunId}?count=500&localdatetime=${portalLocalDateTime()}`;
+  const paydatesUrl = `${apiBase}/payroll/${state.payrollId}/paydates/${state.payRunId}?count=${paydateCount()}&localdatetime=${portalLocalDateTime()}`;
   if (verbose) logStatus('Fetching payslip manifest...');
   const paydates = await fetchJson(paydatesUrl, state.accessToken);
-  const periods = paydates.payPeriodSummaries || [];
+  const returnedPeriods = paydates.payPeriodSummaries || [];
+  const periods = returnedPeriods.slice(0, paydateCount());
   const manifest = [];
 
-  if (verbose) logStatus(`Found ${periods.length} pay periods. Fetching file lists...`);
+  if (verbose) logStatus(`Found ${returnedPeriods.length} pay periods. Fetching file lists for ${periods.length}...`);
 
   for (const [index, period] of periods.entries()) {
     const payDate = isoDate(period.payDate);
@@ -347,6 +385,7 @@ if (command === 'config') {
     payrollId: config.payrollId,
     payRunId: config.payRunId,
     accessTokenKey: config.accessTokenKey,
+    paydateCount: paydateCount(),
   }, null, 2));
 } else if (command === 'scan') {
   const scan = await getManifest({ verbose: true });
@@ -382,7 +421,7 @@ if (command === 'config') {
   }, null, 2));
 } else if (command === 'download') {
   const scan = await getManifest({ verbose: true });
-  const outDir = path.resolve(process.argv[3] || 'payslips-downloads');
+  const outDir = path.resolve(positionalArg(0) || 'payslips-downloads');
   const allFiles = scan.manifest.flatMap(period => period.files.map(file => ({ period, file })));
   const results = [];
 
@@ -425,7 +464,7 @@ if (command === 'config') {
   }, null, 2));
 } else if (command === 'verify') {
   const scan = await getManifest({ verbose: true });
-  const outDir = path.resolve(process.argv[3] || process.argv[2] || 'payslips-downloads');
+  const outDir = path.resolve(positionalArg(0) || 'payslips-downloads');
   logStatus(`Verifying files in ${outDir}...`);
   const expected = scan.manifest.flatMap(period => period.files.map((file, index) => {
     const suffix = period.files.length > 1 ? `-${file.payslipName || index + 1}-${file.payslipFileId}` : '';
