@@ -54,6 +54,7 @@ const config = {
   payRunId: setting('PAYSLIP_PAY_RUN_ID', 'payRunId'),
   accessTokenKey: setting('PAYSLIP_ACCESS_TOKEN_KEY', 'accessTokenKey'),
   paydateCount: cliOption('--count', '--paydate-count') || setting('PAYSLIP_PAYDATE_COUNT', 'paydateCount') || '26',
+  outputDir: setting('PAYSLIP_OUTPUT_DIR', 'outputDir'),
 };
 
 const envNames = {
@@ -65,6 +66,7 @@ const envNames = {
   payRunId: 'PAYSLIP_PAY_RUN_ID',
   accessTokenKey: 'PAYSLIP_ACCESS_TOKEN_KEY',
   paydateCount: 'PAYSLIP_PAYDATE_COUNT',
+  outputDir: 'PAYSLIP_OUTPUT_DIR',
 };
 
 function missingConfig(...keys) {
@@ -167,6 +169,10 @@ function paydateCount() {
     throw new Error(`Invalid paydate count: ${config.paydateCount}`);
   }
   return count;
+}
+
+function outputDir() {
+  return path.resolve(positionalArg(0) || config.outputDir || 'payslips-downloads');
 }
 
 function safeFilePart(value) {
@@ -386,6 +392,7 @@ if (command === 'config') {
     payRunId: config.payRunId,
     accessTokenKey: config.accessTokenKey,
     paydateCount: paydateCount(),
+    outputDir: config.outputDir || null,
   }, null, 2));
 } else if (command === 'scan') {
   const scan = await getManifest({ verbose: true });
@@ -421,7 +428,7 @@ if (command === 'config') {
   }, null, 2));
 } else if (command === 'download') {
   const scan = await getManifest({ verbose: true });
-  const outDir = path.resolve(positionalArg(0) || 'payslips-downloads');
+  const outDir = outputDir();
   const allFiles = scan.manifest.flatMap(period => period.files.map(file => ({ period, file })));
   const results = [];
 
@@ -464,7 +471,7 @@ if (command === 'config') {
   }, null, 2));
 } else if (command === 'verify') {
   const scan = await getManifest({ verbose: true });
-  const outDir = path.resolve(positionalArg(0) || 'payslips-downloads');
+  const outDir = outputDir();
   logStatus(`Verifying files in ${outDir}...`);
   const expected = scan.manifest.flatMap(period => period.files.map((file, index) => {
     const suffix = period.files.length > 1 ? `-${file.payslipName || index + 1}-${file.payslipFileId}` : '';

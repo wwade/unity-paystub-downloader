@@ -47,13 +47,16 @@ Use `config.json` when you want to pin or override discovered values:
   "payrollId": "your-payroll-id",
   "payRunId": "your-pay-run-id",
   "accessTokenKey": "your-session-storage-access-token-key",
-  "paydateCount": 26
+  "paydateCount": 26,
+  "outputDir": "C:\\path\\to\\paystubs"
 }
 ```
 
 The script reads `config.json` automatically if it exists. Shell environment variables still work and override `config.json`; both override auto-discovery. Do not commit `config.json`; it is ignored by Git.
 
 By default, the script asks the portal for the 26 most recent pay periods. Override that with `paydateCount` in `config.json`, `PAYSLIP_PAYDATE_COUNT`, or a CLI flag such as `--count 52`.
+
+By default, downloads are written to `payslips-downloads`. Set `outputDir` in `config.json` or `PAYSLIP_OUTPUT_DIR` to change the default. A command-line output directory still takes precedence for `download` and `verify`.
 
 ### Finding Config Values Manually
 
@@ -149,19 +152,19 @@ Fetch more or fewer pay periods:
 
 ```powershell
 node .\payslip-tools.mjs scan --count 52
-node .\payslip-tools.mjs download .\payslips-downloads --count 52
+node .\payslip-tools.mjs download --count 52
 ```
 
-Download all missing payslip PDFs into `payslips-downloads`:
+Download all missing payslip PDFs into the configured output directory:
 
 ```powershell
-node .\payslip-tools.mjs download .\payslips-downloads
+node .\payslip-tools.mjs download
 ```
 
 Verify the local folder against the portal manifest:
 
 ```powershell
-node .\payslip-tools.mjs verify .\payslips-downloads
+node .\payslip-tools.mjs verify
 ```
 
 Test one PDF download path:
@@ -183,7 +186,7 @@ The downloader is resumable. It builds the expected filename for each portal fil
 That means rerunning:
 
 ```powershell
-node .\payslip-tools.mjs download .\payslips-downloads
+node .\payslip-tools.mjs download
 ```
 
 will only download files that are new or missing. Existing files are not overwritten.
