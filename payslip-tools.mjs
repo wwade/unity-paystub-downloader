@@ -128,6 +128,10 @@ function isoDate(value) {
   return String(value || '').slice(0, 10);
 }
 
+function portalLocalDateTime(date = new Date()) {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}+${date.getHours()}:${date.getMinutes()}`;
+}
+
 function safeFilePart(value) {
   return String(value || '')
     .replace(/[<>:"/\\|?*\x00-\x1f]/g, '-')
@@ -286,7 +290,7 @@ async function getManifest({ verbose = false } = {}) {
   }
 
   const apiBase = `${config.apiOrigin.replace(/\/$/, '')}/api/${state.company}`;
-  const paydatesUrl = `${apiBase}/payroll/${state.payrollId}/paydates/${state.payRunId}?count=500&localdatetime=2026-4-26+17:3`;
+  const paydatesUrl = `${apiBase}/payroll/${state.payrollId}/paydates/${state.payRunId}?count=500&localdatetime=${portalLocalDateTime()}`;
   if (verbose) logStatus('Fetching payslip manifest...');
   const paydates = await fetchJson(paydatesUrl, state.accessToken);
   const periods = paydates.payPeriodSummaries || [];
